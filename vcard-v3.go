@@ -129,7 +129,7 @@ func (vc *VCardV3) CreateProperty(name string) IProperty {
 func (vc *VCardV3) AddPropertyParameter(p IProperty, name string, value []string) {
 	param := NewParameter(name)
 
-	switch (p.GetName()) {
+	switch (param.GetName()) {
 		case "ENCODING":
 			if len(value) > 0 {
 				if (strings.ToLower(value[0]) == "base64") {

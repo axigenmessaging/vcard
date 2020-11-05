@@ -70,9 +70,20 @@ func (b *Builder) RenderProperty(p IProperty) string {
 	s.WriteString(p.GetName())
 	s.WriteString(b.RenderParameters(p.GetParameters()))
 	s.WriteString(":")
-	s.WriteString(b.RenderPropertyValue(p))
 
-	return FormatLine(s.String())
+
+	if (p.GetName() == "PHOTO") {
+		// be sure that the value is on a new line
+		var  r strings.Builder
+		r.WriteString(FormatLine(s.String()))
+		r.WriteString(FormatSecondaryLines(b.RenderPropertyValue(p)))
+		return r.String()
+
+	} else {
+		s.WriteString(b.RenderPropertyValue(p))
+		return FormatLine(s.String())
+	}
+
 }
 
 func (b *Builder) RenderPropertyValue(p IProperty) string {
@@ -150,12 +161,18 @@ func (b *Builder) RenderParameter(p IParameter) string {
  *  single white space character (space (U+0020) or horizontal tab
  *  (U+0009))
  */
+
+ /*
 func FormatLine(s string) string {
 	var (
 		rLine strings.Builder
 		line strings.Builder
 	)
 	line.Grow(75)
+
+	if (forceAsSecondaryLine) {
+		rLine.WriteString("\r\n ")
+	}
 
 	saveLine := false
 	for i, r := range s {
@@ -167,7 +184,7 @@ func FormatLine(s string) string {
 
 		if saveLine || (i + len(string(r)) == len(s)) {
 			// we have 75 chars or is the last char to save
-			if rLine.Len() > 0 {
+			if  rLine.Len() > 0 {
 				rLine.WriteString("\r\n ")
 			}
 			rLine.Grow(len(line.String()))
@@ -178,6 +195,64 @@ func FormatLine(s string) string {
 		}
 	}
 	return rLine.String()
+}
+*/
+
+func FormatLine(s string) string {
+	var (
+		result, line strings.Builder
+		i int
+		r rune
+	)
+
+	for i, r = range s {
+		if line.Len() + len(string(r)) <= 73 {
+			line.WriteRune(r)
+		} else {
+			// we finished first line
+			break
+		}
+	}
+	result.WriteString(line.String())
+	if line.Len() < len(s) {
+		result.WriteString(FormatSecondaryLines(s[i:]))
+	}
+
+	return result.String()
+}
+
+func FormatSecondaryLines(s string) string {
+	var lines strings.Builder
+	var currentLine strings.Builder
+
+	if len(s) == 0 {
+		return ""
+	}
+
+	saveLine := false
+	currentLine.WriteString("\r\n ")
+	for i, r := range s {
+		if currentLine.Len() - 2 + len(string(r)) <= 73 {
+			currentLine.WriteRune(r)
+		} else {
+			saveLine = true
+		}
+
+
+		if saveLine || (i + len(string(r)) == len(s)) {
+			// we have max 75 chars or it's the end of string
+			lines.Grow(len(currentLine.String()))
+			lines.WriteString(currentLine.String())
+			currentLine.Reset()
+
+			// write current character
+			currentLine.WriteString("\r\n ")
+			currentLine.WriteRune(r)
+			saveLine = false
+		}
+	}
+
+	return lines.String()
 }
 
 
