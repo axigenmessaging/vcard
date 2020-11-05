@@ -1,5 +1,24 @@
 package vcard
 
+type IVCard interface {
+	// create a property
+	CreateProperty(name string) IProperty
+
+	// attach a parameter to a property and handle parameter rules
+	AddPropertyParameter(p IProperty, name string, v []string)
+
+	// add property
+	AddProperty(p IProperty)
+
+	GetProperties() []IProperty
+	GetProperty(name string) []IProperty
+	DeleteProperty(name string)
+
+	// build
+	Build() string
+
+}
+
 /**
  * property interface
  */

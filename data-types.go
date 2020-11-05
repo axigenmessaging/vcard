@@ -69,6 +69,7 @@ func NewText(s string) *TextValue{
 }
 
 
+
 /**
  * The components correspond, in sequence, to the sex
  *     (biological), and gender identity.  Each component is optional.
@@ -490,7 +491,12 @@ func (v *PhotoValue) AutodetectValue(s string) {
 }
 
 func NewPhoto(s string) *PhotoValue {
-	p := new(PhotoValue)
+	p := &PhotoValue {
+		TextValue: &TextValue{},
+		IsUrl: false,
+		IsB64Encoded: false,
+		MediaType: "", // mime type of the value
+	}
 	if len(s)>0 {
 		p.AutodetectValue(s)
 	}

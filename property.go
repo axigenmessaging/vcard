@@ -4,8 +4,6 @@ import (
 	"strings"
 )
 
-
-
 /**
  * generic vcard property
  */

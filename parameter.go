@@ -89,19 +89,24 @@ func (p *Parameter) String() string {
 	return strBuilder.String()
 }
 
+/**
+ * has at least one value that is not empty
+ */
 func (p *Parameter) IsEmpty() bool {
 	if len(p.value) > 0 {
 		for _, v := range p.value {
 			if v != "" {
-				return true
+				return false
 			}
 		}
 	}
-	return false
+	return true
 }
 
 func NewParameter(name string) *Parameter {
 	p := &Parameter {
+		name: "",
+		value: []string{},
 		mayHaveMultipleValues: false,
 	}
 	p.SetName(name)

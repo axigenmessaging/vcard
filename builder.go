@@ -4,11 +4,13 @@
  * should contains common functions and creators for common properties for all versions (properties must have same characteristics)
  */
 package vcard
+
 import (
 	"strings"
 )
 
 type Builder struct {
+	vcard IVCard
 	/**
 	 * possible values:
 	 *	 - ignore - if a property with cardinality 1 or *1 is already set and is added for the second time, the new added is ignored (the first property is kept)
@@ -17,60 +19,30 @@ type Builder struct {
 	 */
 	 addPropertyScenario string
 
-	// vcard prperty structure
-	properties []IProperty
-
 	// vcard string
 	cardString strings.Builder
-
-	version string
 }
 
-
-/**
-* adding property scenario
-* possible values:
-*	 - ignore - if a property with cardinality 1 or *1 is already set and is added for the second time, the new added is ignored (the first property is kept)
-*	 - overwrite - if a property with cardinality 1 or *1 is already set and is added for the second time, the old one is overwritten.
-*  default: overwrite
-*/
-func (b *Builder) SetAddPropertyScenario(v string) {
-	if v != "ignore" {
-		v = "overwrite"
-	}
-	b.addPropertyScenario = v;
-}
-
-func (b *Builder) GetAddPropertyScenario() string {
-	v := b.addPropertyScenario
-	if v!= "ignore" {
-		v = "overwrite"
-	}
-	return v
-}
 
 
 func (b *Builder) GetString() string {
 	return b.cardString.String()
 }
 
-func (b *Builder) GetVersion() string {
-	return b.version
-}
 
 func (b *Builder) Build() string {
 	// reset the string
-	b.cardString.Reset()
+	b.cardString.Reset() // b.cardString = strings.Builder{}
 
 	// write begin property
-	b.cardString.WriteString(b.RenderProperty(b.NewBeginProperty()))
+	b.cardString.WriteString(b.RenderProperty(b.vcard.CreateProperty("begin")))
 	b.cardString.WriteString("\r\n")
 
 	// write version property
-	b.cardString.WriteString(b.RenderProperty(b.NewVersionProperty()))
+	b.cardString.WriteString(b.RenderProperty(b.vcard.CreateProperty("version")))
 	b.cardString.WriteString("\r\n")
 
-	for _, p := range b.properties {
+	for _, p := range b.vcard.GetProperties() {
 		switch p.GetName() {
 			case "BEGIN", "END", "VERSION":
 				// these properties are manually added in the correct order
@@ -83,7 +55,7 @@ func (b *Builder) Build() string {
 	}
 
 	// write end property
-	b.cardString.WriteString(b.RenderProperty(b.NewEndProperty()))
+	b.cardString.WriteString(b.RenderProperty(b.vcard.CreateProperty("end")))
 
 	return b.GetString()
 }
@@ -168,103 +140,7 @@ func (b *Builder) RenderParameter(p IParameter) string {
 }
 
 
-/**
- * return a list of properties
- */
- func (b *Builder) GetProperty(name string) []IProperty {
-    var result []IProperty
-    for _ , p := range b.properties {
-		if (p.GetName() == strings.ToUpper(name)) {
-			result = append(result, p)
-		}
-	}
-	return result
-}
 
-/**
- * add a property
- */
-func (b *Builder) AddProperty(p IProperty) {
-
-	if p.GetCardinality() == "1" || p.GetCardinality() == "*1" {
-		// only one property should exists
-		switch (b.GetAddPropertyScenario()) {
-			case "ignore":
-				propExists := b.GetProperty(p.GetName())
-				if len(propExists) > 0 {
-					// ignore item
-					return
-				}
-			case "overwrite":
-				// remove all existing properties of the same type (name)
-				b.DeleteProperty(p.GetName())
-		}
-	}
-
-   b.properties = append(b.properties, p)
-}
-
-/**
- * delete a proprty by name
- */
-func (b *Builder) DeleteProperty(name string) {
-	for idx, p := range b.properties {
-		if (p.GetName() == strings.ToUpper(name)) {
-			b.properties = append(b.properties[:idx], b.properties[idx+1:]...)
-		}
-	}
-}
-
-/**
- *  create BEGIN property
- */
-func (b *Builder) NewBeginProperty() *VCardProperty {
-	p := NewProperty("begin")
-	p.SetCardinality("1")
-	p.SetAllowMultipleValues(false)
-	p.AddValue(NewText("VCARD"))
-
-	return p
-}
-
-/**
- *  create END property
- */
- func (b *Builder) NewEndProperty() *VCardProperty {
-	p := NewProperty("end")
-	p.SetCardinality("1")
-	p.SetAllowMultipleValues(false)
-	p.AddValue(NewText("VCARD"))
-
-	return p
-}
-
-/**
- *  create VERSION property
- */
- func (b *Builder) NewVersionProperty() *VCardProperty {
-	p := NewProperty("version")
-	p.SetCardinality("1")
-	p.SetAllowMultipleValues(false)
-	p.AddValue(NewText(b.GetVersion()))
-
-	return p
-}
-
-/**
- *  create custom property
- */
- func (b *Builder) NewCustomProperty(name string) *VCardProperty {
-	p := NewProperty(name)
-	return p
-}
-
-/**
- * validate vcard structure, values & parameters
- */
-func (b *Builder) Validate() bool {
-	return true
-}
 
 /**
  *  Content lines  SHOULD be folded to a maximum width of 75 octets, excluding the line
@@ -304,317 +180,11 @@ func FormatLine(s string) string {
 	return rLine.String()
 }
 
-func (b *Builder) NewFBUrlProperty() *VCardProperty {
-	// not available in 3.0
-	return nil
-}
 
-func (b *Builder) NewClassProperty() *VCardProperty {
-	// not available in 4.0
-	return nil
-}
+func NewBuilder(vc IVCard) *Builder {
+	b := Builder{
+		vcard: vc,
+	}
 
-/**
- *  create N property
- */
- func (b *Builder) NewNProperty() *VCardProperty {
-	p := NewProperty("N")
-	p.SetCardinality("*1")
-	p.SetAllowMultipleValues(false)
-	return p
- }
-
- /**
- *  create FN property
- */
- func (b *Builder) NewFnProperty() *VCardProperty {
-	p := NewProperty("FN")
-	p.SetCardinality("1*")
-	p.SetAllowMultipleValues(false)
-	return p
- }
-
-
-/**
- *  create BDAY property
- */
- func (b *Builder) NewBDayProperty() *VCardProperty {
-	p := NewProperty("BDAY")
-	p.SetCardinality("*1")
-	p.SetAllowMultipleValues(false)
-	return p
- }
-
-/**
- *  create ANNIVERSARY property
- */
- func (b *Builder) NewAnniversaryProperty() *VCardProperty {
-	p := NewProperty("ANNIVERSARY")
-	p.SetCardinality("*1")
-	p.SetAllowMultipleValues(false)
-	return p
- }
-
- /**
- *  create ADR property
- */
- func (b *Builder) NewAdrProperty() *VCardProperty {
-	p := NewProperty("ADR")
-	p.SetCardinality("*")
-	p.SetAllowMultipleValues(false)
-	return p
- }
-
- /**
- *  create TEL property
- */
-func (b *Builder) NewTelProperty() *VCardProperty {
-	p := NewProperty("TEL")
-	p.SetCardinality("*")
-	p.SetAllowMultipleValues(false)
-	return p
-}
-
-/**
- *  create EMAIL property
- */
- func (b *Builder) NewEmailProperty() *VCardProperty {
-	p := NewProperty("EMAIL")
-	p.SetCardinality("*")
-	p.SetAllowMultipleValues(false)
-	return p
-}
-
- /**
- *  create NICKNAME property
- */
- func (b *Builder) NewNicknameProperty() *VCardProperty {
-	p := NewProperty("NICKNAME")
-	p.SetCardinality("*")
-	p.SetAllowMultipleValues(true)
-	return p
- }
-
-/**
- *  create PHOTO property
- */
- func (b *Builder) NewPhotoProperty() *VCardProperty {
-	p := NewProperty("PHOTO")
-	p.SetCardinality("*")
-	p.SetAllowMultipleValues(false)
-	return p
- }
-
-
-/**
- *  create URL property
- */
- func (b *Builder) NewUrlProperty() *VCardProperty {
-	p := NewProperty("URL")
-	p.SetCardinality("*")
-	p.SetAllowMultipleValues(false)
-	return p
-}
-
-/**
- *  create KEY property
- */
- func (b *Builder) NewKeyProperty() *VCardProperty {
-	p := NewProperty("KEY")
-	p.SetCardinality("*")
-	p.SetAllowMultipleValues(false)
-	return p
-}
-
-
-/**
- *  create SOUND property
- */
- func (b *Builder) NewSoundProperty() *VCardProperty {
-	p := NewProperty("SOUND")
-	p.SetCardinality("*")
-	p.SetAllowMultipleValues(false)
-	return p
-}
-
-
-/**
- *  create UID property
- */
- func (b *Builder) NewUidProperty() *VCardProperty {
-	p := NewProperty("UID")
-	p.SetCardinality("*1")
-	p.SetAllowMultipleValues(false)
-	return p
-}
-
-/**
- *  create TZ property
- */
- func (b *Builder) NewTzProperty() *VCardProperty {
-	p := NewProperty("TZ")
-	p.SetCardinality("*")
-	p.SetAllowMultipleValues(false)
-	return p
-}
-
-
-/**
- *  create TITLE property
- */
- func (b *Builder) NewTitleProperty() *VCardProperty {
-	p := NewProperty("TITLE")
-	p.SetCardinality("*")
-	p.SetAllowMultipleValues(false)
-	return p
-}
-
-/**
- *  create ROLE property
- */
- func (b *Builder) NewRoleProperty() *VCardProperty {
-	p := NewProperty("ROLE")
-	p.SetCardinality("*")
-	p.SetAllowMultipleValues(false)
-	return p
-}
-
-
-/**
- *  create LOGO property
- */
- func (b *Builder) NewLogoProperty() *VCardProperty {
-	p := NewProperty("LOGO")
-	p.SetCardinality("*")
-	p.SetAllowMultipleValues(false)
-	return p
-}
-
-/**
- *  create ORG property
- */
- func (b *Builder) NewOrgProperty() *VCardProperty {
-	p := NewProperty("ORG")
-	p.SetCardinality("*")
-	p.SetAllowMultipleValues(false)
-	return p
-}
-
-
-/**
- *  create CATEGORIES property
- */
- func (b *Builder) NewCategoriesProperty() *VCardProperty {
-	p := NewProperty("CATEGORIES")
-	p.SetCardinality("*")
-	p.SetAllowMultipleValues(true)
-	return p
-}
-
-/**
- *  create NOTE property
- */
- func (b *Builder) NewNoteProperty() *VCardProperty {
-	p := NewProperty("NOTE")
-	p.SetCardinality("*")
-	p.SetAllowMultipleValues(false)
-	return p
-}
-
-/**
- *  create PRODID property
- */
- func (b *Builder) NewProdIdProperty() *VCardProperty {
-	p := NewProperty("PRODID")
-	p.SetCardinality("*1")
-	p.SetAllowMultipleValues(false)
-	return p
-}
-
-/**
- *  create REV property
- */
- func (b *Builder) NewRevProperty() *VCardProperty {
-	p := NewProperty("REV")
-	p.SetCardinality("*1")
-	p.SetAllowMultipleValues(false)
-	return p
-}
-
-/**
- *  create GEO property
- */
- func (b *BuilderV3) NewGeoProperty() *VCardProperty {
-	p := NewProperty("GEO")
-	p.SetCardinality("*")
-	p.SetAllowMultipleValues(false)
-	return p
-}
-
-/**
- *  create SOURCE property
- */
- func (b *Builder) NewSourceProperty() *VCardProperty {
-	p := NewProperty("SOURCE")
-	p.SetCardinality("*")
-	p.SetAllowMultipleValues(false)
-	return p
-}
-
-func (b *Builder) NewLabelProperty() *VCardProperty {
-	return nil
-}
-func (b *Builder) NewCalAdrUriProperty() *VCardProperty {
-	return nil
-}
-
-/**
- *  create CALURI property
- */
-func (b *Builder) NewCalUriProperty() *VCardProperty {
-	return nil
-}
-
-func (b *Builder) NewRelatedProperty() *VCardProperty {
-	return nil
-}
-
-func (b *Builder) NewAgentProperty() *VCardProperty {
-	return nil
-}
-
-func (b *Builder) NewSortStringProperty() *VCardProperty {
-	return nil
-}
-
-func (b *Builder) NewMailerProperty() *VCardProperty {
-	return nil
-}
-
-func (b *Builder) NewNameProperty() *VCardProperty {
-	return nil
-}
-func (b *Builder) NewProfileProperty() *VCardProperty {
-	return nil
-}
-func (b *Builder) NewXmlProperty() *VCardProperty {
-	return nil
-}
-func (b *Builder) NewKindProperty() *VCardProperty {
-	return nil
-}
-func (b *Builder) NewGenderProperty() *VCardProperty {
-	return nil
-}
-func (b *Builder) NewImppProperty() *VCardProperty {
-	return nil
-}
-func (b *Builder) NewLangProperty() *VCardProperty {
-	return nil
-}
-func (b *Builder) NewMemberProperty() *VCardProperty {
-	return nil
-}
-func (b *Builder) NewClientPidMappProperty() *VCardProperty {
-	return nil
+	return &b
 }
